@@ -11,7 +11,7 @@ None from the user at run time — this workflow is self-contained and triggered
 - Primary: `#0078D4`, gradient/accent: `#3a9bff`
 - Background tint: `#F0F6FF`, text: `#0a0a0a`
 - Neutral borders/grays: `#e5e7eb`, `#DDDDDD`, `#9ca3af`
-- Sender name: "Marketing Ops With Sam" (set by `tools/send_newsletter_email.py`, matches the logo/site brand exactly)
+- Sender name: "Marketing Ops With Sam" (set via the `from` field on the Resend MCP `send-email` call, matches the logo/site brand exactly)
 
 ## Voice: Direct-Response Hooks, Still Professional
 This should be genuinely fun to open, the kind of email someone thinks about during the day, not a flat news recap. Write with the punch of direct-response copywriting (think Sabri Suby: bold claims, pattern interrupts, open loops, curiosity) while staying credible for a professional B2B marketing ops audience. Concretely:
@@ -76,17 +76,22 @@ python tools/render_newsletter_html.py --input .tmp/newsletter_content_<date>.js
 ```
 
 ### 6a. Send
-Send the rendered HTML file via IONOS SMTP, from hello@marketingopswithsam.com:
-```
-python tools/send_newsletter_email.py --to [redacted] --subject "<chosen subject>" --html-file .tmp/newsletter_<date>.html
-```
-This reads `RESEND_API_KEY` from `.env` and sends via Resend's HTTPS API (a real email, HTML + a plain-text fallback the script generates automatically — no draft, no approval step). Uses HTTPS specifically because raw SMTP (port 587) is not reachable from the cloud routine's sandboxed network. Then go to step 7.
+Send using the **Resend MCP tool** (`send-email`), NOT `tools/send_newsletter_email.py` and NOT raw SMTP or a direct HTTPS call. MCP tool calls are the only send path that reliably works from the cloud routine's sandboxed network, direct network calls (SMTP or straight `curl`/`urllib` to any email API) get blocked there, confirmed the hard way on 2026-08-22.
+
+Call `send-email` with:
+- `from`: `Marketing Ops With Sam <hello@marketingopswithsam.com>`
+- `to`: `["[redacted]"]`
+- `subject`: the chosen subject line
+- `html`: the contents of the rendered `.tmp/newsletter_<date>.html` file (read it first)
+- `text`: a short plain-text fallback (a few sentences summarizing the issue is enough, the HTML is what actually gets read)
+
+This is a real send, no draft, no approval step. Then go to step 7.
+
+(`tools/send_newsletter_email.py` still exists and still works, useful for quick local testing from a machine with normal network access, but the cloud routine must use the Resend MCP tool, not that script.)
 
 ### 6b. Failure path
-If step 2's safety check failed, or any tool call in steps 3-6a errored: don't leave it silent, since nobody is reviewing this run each morning. Send a short plain-text heads-up so the skip is visible immediately instead of only discoverable by checking the log file:
-```
-python tools/send_newsletter_email.py --to [redacted] --subject "Newsletter skipped today" --body "Today's AI in Marketing newsletter did not send.\n\nReason: <what happened>"
-```
+If step 2's safety check failed, or any tool call in steps 3-6a errored: don't leave it silent, since nobody is reviewing this run each morning. Send a short plain-text heads-up via the same Resend MCP tool so the skip is visible immediately instead of only discoverable by checking the log file: `send-email` with `from`/`to` as above, `subject`: "Newsletter skipped today", `text`: "Today's AI in Marketing newsletter did not send.\n\nReason: <what happened>" (and `html` can repeat the same text).
+
 Then append a failure entry to `logs/newsletter_history.jsonl` (date, status: "skipped", reason) and stop.
 
 ### 7. Log
