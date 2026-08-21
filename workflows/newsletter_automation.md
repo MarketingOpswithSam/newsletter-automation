@@ -1,7 +1,7 @@
 # Workflow: Daily "AI in Marketing" Newsletter
 
 ## Objective
-Every morning at 08:00 Australia/Melbourne, autonomously research how AI in marketing is changing, draft a short newsletter, generate on-brand images, render polished HTML, and **send** it from hello@marketingopswithsam.com to [redacted]. Fully autonomous — no human approval step.
+Every morning at 08:00 Australia/Melbourne, autonomously research how AI in marketing is changing, draft a short newsletter, generate on-brand images, render polished HTML, and **send** it from hello@marketingopswithsam.com to the recipient in `NEWSLETTER_TO_EMAIL` (see `.env` locally, or the routine's own prompt config in the cloud, this file is public so the literal recipient address is deliberately kept out of it). Fully autonomous — no human approval step.
 
 ## Required Inputs
 None from the user at run time — this workflow is self-contained and triggered by a daily schedule. Fixed theme: "how AI in marketing is changing, what to focus on, what to learn, and concrete action steps."
@@ -80,17 +80,23 @@ Send using the **Resend MCP tool** (`send-email`), NOT `tools/send_newsletter_em
 
 Call `send-email` with:
 - `from`: `Marketing Ops With Sam <hello@marketingopswithsam.com>`
-- `to`: `["[redacted]"]`
+- `to`: `[the address in NEWSLETTER_TO_EMAIL]`
 - `subject`: the chosen subject line
-- `html`: the contents of the rendered `.tmp/newsletter_<date>.html` file (read it first)
+- `html`: the **raw, unescaped** contents of the rendered `.tmp/newsletter_<date>.html` file (read it first). Pass the file's exact contents, character for character, do NOT re-type, re-format, or HTML-escape it while passing it as the tool argument, that turns real `<table>` markup into literal `&lt;table&gt;` text and the recipient gets a wall of visible tags instead of a formatted email. This happened once (2026-08-22) and must not happen again.
 - `text`: a short plain-text fallback (a few sentences summarizing the issue is enough, the HTML is what actually gets read)
 
-This is a real send, no draft, no approval step. Then go to step 7.
+**Mandatory guardrail, every single send, no exceptions:** immediately after calling `send-email`, call `get-email` with the returned id and inspect the `HTML Content` field it returns.
+- It must start with a real `<!DOCTYPE html>` (an actual less-than sign), not the literal text `&lt;!DOCTYPE`.
+- It must contain real `<table`, `<td`, `<img` tags, not `&lt;table`, `&lt;td`, `&lt;img`.
+- If it looks escaped (literal `&lt;`/`&gt;` visible instead of real tags), the send is broken. Immediately send a corrected email (same subject is fine, Gmail and most clients will just show both, better a duplicate than a broken one going unnoticed) with the HTML passed correctly, verify that one with `get-email` too, and only log success once a verified-good email has gone out.
+- Only proceed to step 7 after this check passes on a real send.
+
+This is a real send, no draft, no approval step otherwise. Then go to step 7.
 
 (`tools/send_newsletter_email.py` still exists and still works, useful for quick local testing from a machine with normal network access, but the cloud routine must use the Resend MCP tool, not that script.)
 
 ### 6b. Failure path
-If step 2's safety check failed, or any tool call in steps 3-6a errored: don't leave it silent, since nobody is reviewing this run each morning. Send a short plain-text heads-up via the same Resend MCP tool so the skip is visible immediately instead of only discoverable by checking the log file: `send-email` with `from`/`to` as above, `subject`: "Newsletter skipped today", `text`: "Today's AI in Marketing newsletter did not send.\n\nReason: <what happened>" (and `html` can repeat the same text).
+If step 2's safety check failed, or any tool call in steps 3-6a errored: don't leave it silent, since nobody is reviewing this run each morning. Send a short plain-text heads-up via the same Resend MCP tool so the skip is visible immediately instead of only discoverable by checking the log file: `send-email` with `from`/`to` as above, `subject`: "Newsletter skipped today", `text`: "Today's AI in Marketing newsletter did not send.\n\nReason: <what happened>" (and `html` can repeat the same text, plain text is low risk for the escaping mistake above, but the same raw-content rule still applies).
 
 Then append a failure entry to `logs/newsletter_history.jsonl` (date, status: "skipped", reason) and stop.
 
@@ -105,6 +111,8 @@ Append a success entry to `logs/newsletter_history.jsonl`: `{"date": "...", "sta
 - `.tmp/*` files are disposable and regenerated daily. `logs/newsletter_history.jsonl` is NOT disposable — it must persist across runs for the dedup check.
 - The template renders as **one continuous document** (a single card with thin dividers), not separate boxed-off blocks per section. Don't reintroduce a full border/box around each individual section, that was tried and explicitly rejected as feeling disconnected.
 - Readability over density: short paragraphs (2 per section, blank-line separated), a bold one-line takeaway (`lead`) at the top of each section, bullets for anything step-like, and a tighter quick-links list (5-7, not 8-10+). Enjoyable to read beats exhaustive.
+- Never hardcode the recipient email address in this file or in any tracked code file, this repo is public. Reference `NEWSLETTER_TO_EMAIL` instead. The sender address (hello@marketingopswithsam.com) is fine to hardcode, it's already public on the site itself.
+- Always verify a send with `get-email` before trusting it (see step 6a). A send that "succeeds" at the API level can still have gone out with broken/escaped HTML, success only means the guardrail check passed too.
 
 ## Edge Cases
 - **Fewer than 3 sources found:** skip send, log failure (step 6b). Don't send a thin/weak issue.
