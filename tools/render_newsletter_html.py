@@ -262,7 +262,7 @@ def render_quick_links(quick_links):
 
 def render_footer(footer):
     footer = footer or {}
-    address = esc(footer.get("address") or "[Add your mailing address here before sending to a list]")
+    address = esc(footer.get("address") or "Melbourne, Australia")
     unsubscribe_url = footer.get("unsubscribe_url") or "#"
     return f"""
   <tr>

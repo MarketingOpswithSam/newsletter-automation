@@ -46,7 +46,7 @@ Synthesize research into a JSON content spec matching the schema `tools/render_n
   ],
   "video_idea": {"hook": "...", "shot_idea": "...", "caption_angle": "..."},
   "quick_links": [{"label": "...", "url": "..."}],
-  "footer": {"address": "[mailing address placeholder]", "unsubscribe_url": "#"}
+  "footer": {"address": "Melbourne, Australia", "unsubscribe_url": "#"}
 }
 ```
 - Sections map to: what's changing, what to focus on / key lesson, and concrete action steps the reader can take today.
@@ -98,7 +98,7 @@ Append a success entry to `logs/newsletter_history.jsonl`: `{"date": "...", "sta
 - Always include a preheader and 2 internally-considered subject line options.
 - Cite sources inline near claims to avoid hallucinated facts.
 - Every image needs `alt` text (handled by the render tool automatically from each section's `heading`, so keep headings meaningful and specific).
-- Keep CAN-SPAM footer placeholders (address, unsubscribe) even though this currently sends to self only — so they're not forgotten if this ever expands to a real subscriber list.
+- Footer address is "Melbourne, Australia" (a city-level placeholder, fine for a self-only send). Keep the unsubscribe link too, so neither is forgotten if this ever expands to a real subscriber list, which would need a full street address for CAN-SPAM compliance.
 - `.tmp/*` files are disposable and regenerated daily. `logs/newsletter_history.jsonl` is NOT disposable — it must persist across runs for the dedup check.
 - The template renders as **one continuous document** (a single card with thin dividers), not separate boxed-off blocks per section. Don't reintroduce a full border/box around each individual section, that was tried and explicitly rejected as feeling disconnected.
 - Readability over density: short paragraphs (2 per section, blank-line separated), a bold one-line takeaway (`lead`) at the top of each section, bullets for anything step-like, and a tighter quick-links list (5-7, not 8-10+). Enjoyable to read beats exhaustive.
