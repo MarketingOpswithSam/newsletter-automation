@@ -14,7 +14,7 @@ None from the user at run time — this workflow is self-contained and triggered
 - Sender name: "Marketing Ops With Sam" (set via the `from` field on the Resend MCP `send-email` call, matches the logo/site brand exactly)
 
 ## Voice: Direct-Response Hooks, Still Professional
-This should be genuinely fun to open, the kind of email someone thinks about during the day, not a flat news recap. Write with the punch of direct-response copywriting (think Sabri Suby: bold claims, pattern interrupts, open loops, curiosity) while staying credible for a professional B2B marketing ops audience. Concretely:
+This should be genuinely fun to open, the kind of email someone thinks about during the day, not a flat news recap. Write with the punch of direct-response copywriting: bold claims, pattern interrupts, open loops, curiosity, while staying credible for a professional B2B marketing ops audience. Concretely:
 - **Subject line and preheader**: lead with curiosity, a bold claim, a specific number, or a pattern interrupt, not a flat headline. "Your competitors' AI agent just did your job for you" beats "AI Agents in Marketing This Week."
 - **Section `lead`**: a provocative one-liner that makes the reader want the next sentence, not a summary. Think of it as the hook of a mini-story, not a topic sentence.
 - **Rhythm**: mix short punchy sentences with longer ones. Don't let every sentence run the same length, that's what makes copy feel flat and reportorial instead of alive.

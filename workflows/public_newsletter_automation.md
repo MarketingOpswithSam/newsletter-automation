@@ -33,7 +33,7 @@ User's explicit direction, given after seeing the first draft:
 - **Structure**: open with an explicit, warm welcome + expectation-setting (cadence, why, the "if it doesn't teach you something or make you laugh, it doesn't go out" promise), then straight into a story. Every issue should have a story, not just analysis.
 - **60% personal experience**: first person, direct. "I saw this," "I encountered this," "I had a client do this."
 - **40% observation, drawn from three sources**: a friend, a former colleague (**never just "colleague" — always "former colleague," user's explicit, repeated instruction**), and someone from the industry generally. Short supporting beats reinforcing the same theme as the main story, not separate topics.
-- **Subject line and preview text**: subject should hook like Sabri Suby (curiosity, specific numbers, pattern interrupt) with a touch of Alex Hormozi bluntness/specificity, not a plain "Welcome!" Preview text carries the warmth/welcome framing the subject doesn't have room for.
+- **Subject line and preview text**: subject should hook with curiosity, a specific number, or a pattern interrupt, plus a blunt, concrete edge, not a plain "Welcome!" Preview text carries the warmth/welcome framing the subject doesn't have room for.
 - **Voice**: no "super serious AI language," write like a friend telling a story they actually want to hear, casual but sharp, no em dashes (standing rule, [[feedback-newsletter-writing-style]]).
 
 ## Content: issue #1, current version
@@ -60,4 +60,4 @@ Every content revision in this system has been tested the same way before being 
 
 - **Part B**: edit `supabase/functions/newsletter-signup/index.ts` (via Lovable's own AI agent, since this repo doesn't contain that code) to drop Mailchimp and call Resend (create-contact + send-event) instead. Needs a `RESEND_API_KEY` Supabase secret. **Explicitly asked about twice, still no go-ahead from the user** — do not proceed without it.
 - **Part C**: a second cloud routine (monthly cron, separate from the daily digest routine) that drafts each new month's issue, updates the "Current Issue" template, and sends a broadcast to the "Newsletter Subscribers" segment. Not started.
-- One-time backfill already done: the 3 pre-existing rows in `newsletter_subscribers`, plus a test contact ([redacted]), all created as Resend contacts, opted into the Monthly Newsletter topic, added to the segment.
+- One-time backfill already done: the 3 pre-existing rows in `newsletter_subscribers`, plus a personal test address (not recorded here, this file is public), all created as Resend contacts, opted into the Monthly Newsletter topic, added to the segment.
