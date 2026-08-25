@@ -77,8 +77,19 @@ Run:
 python tools/render_newsletter_html.py --input .tmp/newsletter_content_<date>.json --output .tmp/newsletter_<date>.html
 ```
 
+### 5a. Validate before sending (mandatory, pre-send, no exceptions)
+Run:
+```
+python tools/validate_newsletter_html.py --input .tmp/newsletter_<date>.html
+```
+This must exit 0 and print `OK` before step 6a runs. **Do not call `send-email` at all until this passes.** This script exists specifically because the old process only checked *after* sending (step 6a's guardrail), which meant a broken send still reached the recipient's inbox before anyone noticed. On 2026-08-25/26, a run accidentally called `send-email` with the literal string `<PLACEHOLDER>` as the body, the recipient got that broken email, and only a follow-up corrected one caught it after the fact. That must never happen again, this step is what prevents it: it always validates the actual contents of the file on disk, not whatever the agent typed into a tool argument.
+
+If validation fails: do NOT try to patch it up and send anyway, and do NOT invent a placeholder to test whether some other line of code is a problem. Treat it exactly like a tool-call error in steps 3-5 and go to the step 6b failure path. Fix the underlying issue (bad JSON spec, a render bug, a bad file path) and simply let tomorrow's scheduled run try again, or re-run manually once the fix is in place.
+
 ### 6a. Send
 Send using the **Resend MCP tool** (`send-email`), NOT `tools/send_newsletter_email.py` and NOT raw SMTP or a direct HTTPS call. MCP tool calls are the only send path that reliably works from the cloud routine's sandboxed network, direct network calls (SMTP or straight `curl`/`urllib` to any email API) get blocked there, confirmed the hard way on 2026-08-22.
+
+**Never construct, retype, or paraphrase the HTML by hand for this call, and never pass a stand-in/placeholder value "just to test" the send path.** The only valid `html` argument is the exact, unmodified contents of the `.tmp/newsletter_<date>.html` file that just passed step 5a. Read that file and pass its contents verbatim.
 
 Call `send-email` with:
 - `from`: `Marketing Ops With Sam <hello@marketingopswithsam.com>`
@@ -87,7 +98,7 @@ Call `send-email` with:
 - `html`: the **raw, unescaped** contents of the rendered `.tmp/newsletter_<date>.html` file (read it first). Pass the file's exact contents, character for character, do NOT re-type, re-format, or HTML-escape it while passing it as the tool argument, that turns real `<table>` markup into literal `&lt;table&gt;` text and the recipient gets a wall of visible tags instead of a formatted email. This happened once (2026-08-22) and must not happen again.
 - `text`: a short plain-text fallback (a few sentences summarizing the issue is enough, the HTML is what actually gets read)
 
-**Mandatory guardrail, every single send, no exceptions:** immediately after calling `send-email`, call `get-email` with the returned id and inspect the `HTML Content` field it returns.
+**Mandatory guardrail, every single send, no exceptions:** step 5a is the primary defense (it blocks a bad send before it happens); this is the second layer, in case something got corrupted specifically in the act of passing the file's contents as a tool argument. Immediately after calling `send-email`, call `get-email` with the returned id and inspect the `HTML Content` field it returns.
 - It must start with a real `<!DOCTYPE html>` (an actual less-than sign), not the literal text `&lt;!DOCTYPE`.
 - It must contain real `<table`, `<td`, `<img` tags, not `&lt;table`, `&lt;td`, `&lt;img`.
 - If it looks escaped (literal `&lt;`/`&gt;` visible instead of real tags), the send is broken. Immediately send a corrected email (same subject is fine, Gmail and most clients will just show both, better a duplicate than a broken one going unnoticed) with the HTML passed correctly, verify that one with `get-email` too, and only log success once a verified-good email has gone out.
@@ -121,4 +132,5 @@ Append a success entry to `logs/newsletter_history.jsonl`: `{"date": "...", "sta
 - **Image generation fails for a section:** proceed without that section's image rather than blocking the whole send; the render tool handles missing `image_url` gracefully (image block is simply omitted).
 - **Repeated topic:** if today's best story overlaps heavily with the last 7 log entries, actively look for a different angle or a more recent development before falling back to it.
 - **Existing "sent" entries already logged for today: NEVER skip the send because of this.** This is a single-recipient personal newsletter (recipient is the user themselves), not a subscriber list, so a duplicate send is harmless, it just means checking two emails instead of one. Missing a day's real newsletter is the actual failure mode to avoid. The **only** valid reasons to skip steps 2-6a and go to 6b are: fewer than 3 sources found, or a tool call in steps 3-6a actually erroring. Prior dev/testing sends earlier the same day, or even a prior real send earlier the same day, are never on their own a reason to skip. (This rule exists because a 2026-08-23 scheduled run incorrectly skipped the day's real send on exactly this reasoning, compounded by the UTC/local-date bug below, no newsletter went out that day until manually re-run.)
+- **A rendered file that fails `tools/validate_newsletter_html.py` (step 5a):** never send it and never hand-write a substitute. Go to step 6b (failure path), exactly like any other tool error in steps 3-5. See step 5a for why this exists.
 - **"Today's date" must be computed in Australia/Melbourne local time, not UTC or the execution environment's default timezone**, for every use of "today" in this workflow: reading history, deciding what counts as same-day, and the `date` field written to the log. The schedule fires at 8am AEST/AEDT, which is still the *previous* UTC calendar date, naively using UTC (or `date` with no timezone) makes a same-day comparison silently compare against the wrong day and can cause exactly the false-skip above.
